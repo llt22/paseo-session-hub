@@ -104,7 +104,7 @@ export function ProjectGroupCard({
         </View>
       </Pressable>
 
-      {/* 2. Expanded Sessions List */}
+      {/* 2. Expanded Sessions List (Inside its own project folder) */}
       {isExpanded ? (
         <View style={styles.list}>
           {group.sessions.map((session) => (

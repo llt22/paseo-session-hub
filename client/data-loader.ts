@@ -39,6 +39,7 @@ interface RawAgentSnapshot {
   model?: string | null;
   title?: string | null;
   status?: string;
+  cwd?: string | null;
   requiresAttention?: boolean;
   attentionReason?: string | null;
   attentionTimestamp?: string | null;
@@ -51,9 +52,9 @@ interface RawAgentSnapshot {
 
 interface RawAgentEntry {
   agent: RawAgentSnapshot;
-  project: {
-    projectId: string;
-    projectName: string;
+  project?: {
+    projectId?: string;
+    projectName?: string;
     workspaceName?: string | null;
   };
 }
@@ -98,6 +99,23 @@ function parseTime(isoString?: string | null, fallback: number = Date.now()): nu
   return Number.isNaN(parsed) ? fallback : parsed;
 }
 
+function extractProjectName(entry: RawAgentEntry, workspace?: RawWorkspaceSummary): string {
+  const fromProject = entry.project?.projectName?.trim();
+  if (fromProject && fromProject.length > 0) return fromProject;
+
+  const fromWorkspace = workspace?.projectDisplayName?.trim();
+  if (fromWorkspace && fromWorkspace.length > 0) return fromWorkspace;
+
+  if (entry.agent.cwd) {
+    const cleaned = entry.agent.cwd.replace(/\/+$/, "");
+    const parts = cleaned.split("/");
+    const last = parts[parts.length - 1];
+    if (last && last !== "~" && last !== "." && last !== "") return last;
+  }
+
+  return "default";
+}
+
 export function normalizeSession(
   entry: RawAgentEntry,
   workspacesMap: ReadonlyMap<string, RawWorkspaceSummary>,
@@ -109,6 +127,9 @@ export function normalizeSession(
 
   const rawTitle = agent.title?.trim();
   const title = rawTitle && rawTitle.length > 0 ? rawTitle : `会话 ${agent.id.slice(0, 7)}`;
+
+  const projectName = extractProjectName(entry, workspace);
+  const projectId = project?.projectId || workspace?.projectId || projectName;
 
   const diff: SessionDiff = {
     additions: agent.diffStat?.additions ?? workspace?.diffStat?.additions ?? 0,
@@ -122,9 +143,9 @@ export function normalizeSession(
     id: agent.id,
     title,
     workspaceId: agent.workspaceId ?? "",
-    workspaceName: project.workspaceName?.trim() || workspace?.name || project.projectName,
-    projectId: project.projectId,
-    projectName: project.projectName,
+    workspaceName: project?.workspaceName?.trim() || workspace?.name || projectName,
+    projectId,
+    projectName,
     status,
     stateText,
     provider: agent.provider ?? "unknown",
@@ -241,17 +262,19 @@ export function groupSessionsByProject(
   >();
 
   for (const s of sessions) {
-    let group = groupsMap.get(s.projectId);
+    // Group strictly by project name so every project has its own dedicated folder
+    const groupKey = (s.projectName || "其他项目").trim();
+    let group = groupsMap.get(groupKey);
     if (!group) {
       group = {
-        projectId: s.projectId,
-        projectName: s.projectName,
+        projectId: groupKey,
+        projectName: groupKey,
         sessions: [],
         runningCount: 0,
         attentionCount: 0,
         lastUpdatedAt: s.updatedAt,
       };
-      groupsMap.set(s.projectId, group);
+      groupsMap.set(groupKey, group);
     }
     group.sessions.push(s);
     if (s.status === "running") group.runningCount += 1;
