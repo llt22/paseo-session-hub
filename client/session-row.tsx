@@ -1,3 +1,4 @@
+import { Icon } from "@getpaseo/plugin/client/react-native";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { STATUS_META } from "../shared/constants";
@@ -124,7 +125,7 @@ export function SessionRow({
               onPress={handleSaveRename}
               style={[styles.editBtn, { backgroundColor: accentColor }]}
             >
-              <Text style={styles.btnTextWhite}>✓</Text>
+              <Icon name="Check" size={11} color="#FFFFFF" />
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -132,7 +133,7 @@ export function SessionRow({
               onPress={handleCancelRename}
               style={[styles.editBtn, { backgroundColor: "rgba(128, 128, 128, 0.2)" }]}
             >
-              <Text style={[styles.btnText, { color: foregroundMutedColor }]}>✕</Text>
+              <Icon name="X" size={11} color={foregroundMutedColor} />
             </Pressable>
           </View>
         ) : (
@@ -161,7 +162,7 @@ export function SessionRow({
                 }}
                 style={styles.renameBtn}
               >
-                <Text style={[styles.pencilIcon, { color: foregroundMutedColor }]}>✏️</Text>
+                <Icon name="Pencil" size={11} color={foregroundMutedColor} />
               </Pressable>
             ) : null}
           </View>
@@ -189,7 +190,7 @@ export function SessionRow({
             {relativeTime}
           </Text>
 
-          {/* Ultra-Muted Quiet Model Label (No heavy pill background) */}
+          {/* Ultra-Muted Quiet Model Label */}
           {formattedModel ? (
             <Text
               numberOfLines={1}
@@ -287,9 +288,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     opacity: 0.7,
   },
-  pencilIcon: {
-    fontSize: 10,
-  },
   editWrapper: {
     flex: 1,
     flexDirection: "row",
@@ -310,15 +308,6 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     alignItems: "center",
     justifyContent: "center",
-  },
-  btnTextWhite: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  btnText: {
-    fontSize: 11,
-    fontWeight: "700",
   },
   workspaceText: {
     flexShrink: 2,

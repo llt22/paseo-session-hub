@@ -1,5 +1,6 @@
+import { Icon } from "@getpaseo/plugin/client/react-native";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { ProjectGroup } from "../shared/types";
 import { SessionRow } from "./session-row";
 
@@ -63,12 +64,14 @@ export function ProjectGroupCard({
           },
         ]}
       >
-        {/* Left: Arrow + Project Icon + Project Name + Count */}
+        {/* Left: SVG Arrow + SVG Folder + Project Name + Count */}
         <View style={styles.headerLeft}>
-          <Text style={[styles.arrow, { color: foregroundMutedColor }]}>
-            {isExpanded ? "▼" : "▶"}
-          </Text>
-          <Text style={styles.folderIcon}>📁</Text>
+          <Icon
+            name={isExpanded ? "ChevronDown" : "ChevronRight"}
+            size={13}
+            color={foregroundMutedColor}
+          />
+          <Icon name="Folder" size={14} color={accentColor} />
           <Text
             numberOfLines={1}
             style={[
@@ -104,9 +107,14 @@ export function ProjectGroupCard({
         </View>
       </Pressable>
 
-      {/* 2. Expanded Sessions List (Inside its own project folder) */}
+      {/* 2. Expanded Sessions List with Bounded Max Height & Smooth Scrolling */}
       {isExpanded ? (
-        <View style={styles.list}>
+        <ScrollView
+          style={styles.scrollContainer}
+          contentContainerStyle={styles.listContent}
+          nestedScrollEnabled
+          showsVerticalScrollIndicator={group.sessions.length > 5}
+        >
           {group.sessions.map((session) => (
             <SessionRow
               key={session.id}
@@ -122,7 +130,7 @@ export function ProjectGroupCard({
               accentColor={accentColor}
             />
           ))}
-        </View>
+        </ScrollView>
       ) : null}
     </View>
   );
@@ -136,11 +144,11 @@ const styles = StyleSheet.create({
     marginVertical: 6,
   },
   header: {
+    height: 40,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 12,
-    paddingVertical: 10,
   },
   headerLeft: {
     flex: 1,
@@ -148,13 +156,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     overflow: "hidden",
-  },
-  arrow: {
-    fontSize: 9,
-    width: 12,
-  },
-  folderIcon: {
-    fontSize: 13,
   },
   projectName: {
     fontSize: 13,
@@ -215,7 +216,10 @@ const styles = StyleSheet.create({
     color: "#F59E0B",
     fontWeight: "600",
   },
-  list: {
+  scrollContainer: {
+    maxHeight: 330,
+  },
+  listContent: {
     paddingHorizontal: 6,
     paddingVertical: 2,
   },

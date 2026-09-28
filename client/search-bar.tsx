@@ -1,3 +1,4 @@
+import { Icon } from "@getpaseo/plugin/client/react-native";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import type { ViewMode } from "../shared/types";
 
@@ -43,7 +44,7 @@ export function SearchBar({
           { backgroundColor: surfaceColor, borderColor: `${borderColor}80` },
         ]}
       >
-        <Text style={[styles.searchIcon, { color: foregroundMutedColor }]}>🔍</Text>
+        <Icon name="Search" size={13} color={foregroundMutedColor} />
         <TextInput
           value={query}
           onChangeText={onChangeQuery}
@@ -61,14 +62,14 @@ export function SearchBar({
             onPress={() => onChangeQuery("")}
             style={styles.clearBtn}
           >
-            <Text style={[styles.clearText, { color: foregroundMutedColor }]}>✕</Text>
+            <Icon name="X" size={12} color={foregroundMutedColor} />
           </Pressable>
         ) : null}
       </View>
 
       {/* 2. Right Toolbar: View Switcher & Action Buttons */}
       <View style={styles.tools}>
-        {/* View Mode Switcher: Project First */}
+        {/* View Mode Switcher */}
         <View style={[styles.switchGroup, { borderColor: `${borderColor}80` }]}>
           <Pressable
             accessibilityRole="button"
@@ -146,6 +147,7 @@ export function SearchBar({
             onPress={onBulkArchive}
             style={[styles.archiveBtn, { borderColor: `${borderColor}60` }]}
           >
+            <Icon name="Archive" size={11} color="#EF4444" />
             <Text style={styles.archiveText}>
               {isArchiving ? "清理中..." : `清理 ${closedCount} 个已结束`}
             </Text>
@@ -159,15 +161,9 @@ export function SearchBar({
           onPress={onRefresh}
           style={[styles.refreshBtn, { borderColor: `${borderColor}60` }]}
         >
-          <Text
-            style={[
-              styles.refreshText,
-              { color: foregroundMutedColor },
-              isFetching ? styles.spinning : null,
-            ]}
-          >
-            {isFetching ? "⏳" : "↻"}
-          </Text>
+          <View style={isFetching ? styles.spinning : null}>
+            <Icon name="RefreshCw" size={12} color={foregroundMutedColor} />
+          </View>
         </Pressable>
       </View>
     </View>
@@ -193,9 +189,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 8,
   },
-  searchIcon: {
-    fontSize: 12,
-  },
   input: {
     flex: 1,
     fontSize: 13,
@@ -204,9 +197,6 @@ const styles = StyleSheet.create({
   },
   clearBtn: {
     padding: 2,
-  },
-  clearText: {
-    fontSize: 11,
   },
   tools: {
     flexDirection: "row",
@@ -230,6 +220,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   archiveBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
     paddingHorizontal: 9,
     paddingVertical: 5.5,
     borderRadius: 7,
@@ -248,10 +241,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
-  },
-  refreshText: {
-    fontSize: 12,
-    fontWeight: "600",
   },
   spinning: {
     opacity: 0.5,

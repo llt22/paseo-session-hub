@@ -1,3 +1,4 @@
+import { Icon } from "@getpaseo/plugin/client/react-native";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { STATUS_META } from "../shared/constants";
@@ -160,14 +161,14 @@ export function SessionCard({
                 onPress={handleSaveRename}
                 style={[styles.editBtn, { backgroundColor: accentColor }]}
               >
-                <Text style={styles.btnTextWhite}>✓</Text>
+                <Icon name="Check" size={11} color="#FFFFFF" />
               </Pressable>
               <Pressable
                 accessibilityRole="button"
                 onPress={handleCancelRename}
                 style={[styles.editBtn, { backgroundColor: "rgba(128, 128, 128, 0.2)" }]}
               >
-                <Text style={[styles.btnText, { color: foregroundMutedColor }]}>✕</Text>
+                <Icon name="X" size={11} color={foregroundMutedColor} />
               </Pressable>
             </View>
           </View>
@@ -186,12 +187,15 @@ export function SessionCard({
               {session.title}
             </Text>
             {isDifferentWorkspace ? (
-              <Text
-                numberOfLines={1}
-                style={[styles.workspaceText, { color: foregroundMutedColor }]}
-              >
-                📁 {session.workspaceName}
-              </Text>
+              <View style={styles.workspaceRow}>
+                <Icon name="Folder" size={11} color={foregroundMutedColor} />
+                <Text
+                  numberOfLines={1}
+                  style={[styles.workspaceText, { color: foregroundMutedColor }]}
+                >
+                  {session.workspaceName}
+                </Text>
+              </View>
             ) : null}
           </View>
         )}
@@ -217,7 +221,7 @@ export function SessionCard({
               }}
               style={styles.renameBtn}
             >
-              <Text style={styles.pencilIcon}>✏️</Text>
+              <Icon name="Pencil" size={11} color={foregroundMutedColor} />
             </Pressable>
           ) : null}
         </View>
@@ -308,6 +312,11 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     lineHeight: 17,
   },
+  workspaceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
   workspaceText: {
     fontSize: 11,
     opacity: 0.7,
@@ -336,15 +345,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  btnTextWhite: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  btnText: {
-    fontSize: 11,
-    fontWeight: "600",
-  },
   footer: {
     height: 20,
     flexDirection: "row",
@@ -362,8 +362,5 @@ const styles = StyleSheet.create({
   renameBtn: {
     padding: 2,
     opacity: 0.7,
-  },
-  pencilIcon: {
-    fontSize: 10,
   },
 });

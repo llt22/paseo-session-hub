@@ -1,4 +1,5 @@
 import type { PluginSurfaceProps } from "@getpaseo/plugin/client";
+import { Icon } from "@getpaseo/plugin/client/react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -113,7 +114,7 @@ export function SessionHubView({ theme, layout, host, navigation }: PluginSurfac
         </View>
       ) : filteredSessions.length === 0 ? (
         <View style={styles.centerBox}>
-          <Text style={styles.emptyIcon}>🔍</Text>
+          <Icon name="Search" size={30} color={colors.foregroundMuted} />
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
             未找到匹配的会话
           </Text>
@@ -234,10 +235,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 13,
-  },
-  emptyIcon: {
-    fontSize: 32,
-    marginBottom: 4,
   },
   emptyTitle: {
     fontSize: 15,
