@@ -1,0 +1,7 @@
+{
+  "id": "session-hub",
+  "description": "极简全局会话管理器与看板",
+  "requirements": {
+    "paseo": ">=0.10.0-beta.1"
+  }
+}
