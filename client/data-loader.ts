@@ -6,6 +6,8 @@ import type {
   SessionStatus,
   UnifiedSession,
 } from "../shared/types";
+import type { HostInfo } from "./hosts";
+import { resolveHostApi } from "./hosts";
 import type { PaseoApiLike } from "./observation";
 
 const PAGE_LIMIT = 200;
@@ -119,6 +121,8 @@ function extractProjectName(entry: RawAgentEntry, workspace?: RawWorkspaceSummar
 export function normalizeSession(
   entry: RawAgentEntry,
   workspacesMap: ReadonlyMap<string, RawWorkspaceSummary>,
+  serverId: string,
+  serverLabel: string,
 ): UnifiedSession {
   const { agent, project } = entry;
   const workspace = agent.workspaceId ? workspacesMap.get(agent.workspaceId) : undefined;
@@ -141,6 +145,8 @@ export function normalizeSession(
 
   return {
     id: agent.id,
+    serverId,
+    serverLabel,
     title,
     workspaceId: agent.workspaceId ?? "",
     workspaceName: project?.workspaceName?.trim() || workspace?.name || projectName,
@@ -159,13 +165,17 @@ export function normalizeSession(
   };
 }
 
-export async function fetchAllSessions(paseo: PaseoApiLike): Promise<readonly UnifiedSession[]> {
+export async function fetchSingleHostSessions(
+  api: PaseoApiLike,
+  serverId: string,
+  serverLabel: string,
+): Promise<readonly UnifiedSession[]> {
   const [agentsRes, workspacesRes] = await Promise.all([
     (async () => {
       const all: RawAgentEntry[] = [];
       let cursor: string | undefined;
       for (let page = 0; page < MAX_PAGES; page += 1) {
-        const res = await paseo.agents.list({
+        const res = await api.agents.list({
           sort: [{ key: "updated_at", direction: "desc" }],
           page: { limit: PAGE_LIMIT, ...(cursor ? { cursor } : {}) },
         });
@@ -177,7 +187,7 @@ export async function fetchAllSessions(paseo: PaseoApiLike): Promise<readonly Un
       return all;
     })(),
     (async () => {
-      const res = await paseo.workspaces.list();
+      const res = await api.workspaces.list();
       return (res.entries ?? []) as unknown as RawWorkspaceSummary[];
     })(),
   ]);
@@ -187,10 +197,36 @@ export async function fetchAllSessions(paseo: PaseoApiLike): Promise<readonly Un
     workspacesMap.set(ws.id, ws);
   }
 
-  const sessions = agentsRes.map((entry) => normalizeSession(entry, workspacesMap));
+  return agentsRes.map((entry) => normalizeSession(entry, workspacesMap, serverId, serverLabel));
+}
 
-  // Smart triage sorting: Running > Attention > Idle > Closed, then by updatedAt
-  return sessions.sort(compareSessions);
+export async function fetchAllHostsSessions(
+  hosts: readonly HostInfo[],
+  ownHost: { id: string; api: PaseoApiLike },
+): Promise<readonly UnifiedSession[]> {
+  const tasks = hosts.map(async (host) => {
+    if (!host.isOnline && host.serverId !== ownHost.id) return [];
+    const api = resolveHostApi(host.serverId, ownHost as any) as unknown as PaseoApiLike | null;
+    if (!api) return [];
+    try {
+      return await fetchSingleHostSessions(api, host.serverId, host.label);
+    } catch (err) {
+      console.warn(`Session Hub: fetch failed for host [${host.label}]`, err);
+      return [];
+    }
+  });
+
+  const results = await Promise.allSettled(tasks);
+  const allSessions: UnifiedSession[] = [];
+
+  for (const r of results) {
+    if (r.status === "fulfilled") {
+      allSessions.push(...r.value);
+    }
+  }
+
+  // Smart triage sorting across all hosts
+  return allSessions.sort(compareSessions);
 }
 
 export function computeHubStats(sessions: readonly UnifiedSession[]): HubStats {
@@ -219,10 +255,16 @@ export function filterSessions(
   sessions: readonly UnifiedSession[],
   query: string,
   tab: FilterTab,
+  selectedHostId?: string,
 ): readonly UnifiedSession[] {
   const normalizedQuery = query.trim().toLowerCase();
 
   return sessions.filter((s) => {
+    // 0. Host filter (if specified)
+    if (selectedHostId && selectedHostId !== "all" && s.serverId !== selectedHostId) {
+      return false;
+    }
+
     // 1. Tab filter
     if (tab !== "all" && s.status !== tab) {
       return false;
@@ -237,6 +279,7 @@ export function filterSessions(
       s.title.toLowerCase().includes(normalizedQuery) ||
       s.projectName.toLowerCase().includes(normalizedQuery) ||
       s.workspaceName.toLowerCase().includes(normalizedQuery) ||
+      s.serverLabel.toLowerCase().includes(normalizedQuery) ||
       s.id.toLowerCase().includes(normalizedQuery) ||
       (s.model && s.model.toLowerCase().includes(normalizedQuery)) ||
       s.provider.toLowerCase().includes(normalizedQuery) ||
@@ -248,12 +291,15 @@ export function filterSessions(
 
 export function groupSessionsByProject(
   sessions: readonly UnifiedSession[],
+  showHostInGroupName: boolean = false,
 ): readonly ProjectGroup[] {
   const groupsMap = new Map<
     string,
     {
       projectId: string;
       projectName: string;
+      serverId?: string;
+      serverLabel?: string;
       sessions: UnifiedSession[];
       runningCount: number;
       attentionCount: number;
@@ -262,13 +308,17 @@ export function groupSessionsByProject(
   >();
 
   for (const s of sessions) {
-    // Group strictly by project name so every project has its own dedicated folder
-    const groupKey = (s.projectName || "其他项目").trim();
+    const rawProject = (s.projectName || "其他项目").trim();
+    // In multi-host environment, if project names collide across machines, qualify by host
+    const groupKey = showHostInGroupName ? `${rawProject} (${s.serverLabel})` : rawProject;
+
     let group = groupsMap.get(groupKey);
     if (!group) {
       group = {
         projectId: groupKey,
-        projectName: groupKey,
+        projectName: rawProject,
+        serverId: s.serverId,
+        serverLabel: s.serverLabel,
         sessions: [],
         runningCount: 0,
         attentionCount: 0,

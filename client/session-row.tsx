@@ -10,9 +10,10 @@ import { formatRelativeTime } from "./time-ago";
 interface SessionRowProps {
   readonly session: UnifiedSession;
   readonly now: number;
-  readonly onOpenSession: (sessionId: string) => void;
-  readonly onArchiveSession?: (sessionId: string) => void;
-  readonly onRenameSession?: (workspaceId: string, newTitle: string) => void;
+  readonly onOpenSession: (sessionId: string, serverId: string) => void;
+  readonly onArchiveSession?: (sessionId: string, serverId: string) => void;
+  readonly onRenameSession?: (workspaceId: string, newTitle: string, serverId: string) => void;
+  readonly showHostBadge?: boolean;
   readonly foregroundColor?: string;
   readonly foregroundMutedColor?: string;
   readonly borderColor?: string;
@@ -25,6 +26,7 @@ export function SessionRow({
   now,
   onOpenSession,
   onRenameSession,
+  showHostBadge = false,
   foregroundColor = "#F3F4F6",
   foregroundMutedColor = "#9CA3AF",
   borderColor = "#374151",
@@ -48,7 +50,7 @@ export function SessionRow({
 
   const handleSaveRename = () => {
     if (onRenameSession && editTitle.trim()) {
-      onRenameSession(session.workspaceId, editTitle.trim());
+      onRenameSession(session.workspaceId, editTitle.trim(), session.serverId);
     }
     setIsEditing(false);
   };
@@ -64,7 +66,7 @@ export function SessionRow({
       accessibilityLabel={`打开会话: ${session.title}`}
       onPress={() => {
         if (!isEditing) {
-          onOpenSession(session.id);
+          onOpenSession(session.id, session.serverId);
         }
       }}
       style={({ pressed }) => [
@@ -76,7 +78,7 @@ export function SessionRow({
         },
       ]}
     >
-      {/* 1. Left Section: Status Dot + Project Badge + Title (or Edit Input) + Sub-workspace */}
+      {/* 1. Left Section: Status Dot + Host Tag + Project Badge + Title (or Edit Input) + Sub-workspace */}
       <View style={styles.leftSection}>
         {/* Status Dot */}
         <View
@@ -87,6 +89,18 @@ export function SessionRow({
             isAttention ? styles.attentionGlow : null,
           ]}
         />
+
+        {/* Host Tag (if multiple hosts connected) */}
+        {showHostBadge && session.serverLabel ? (
+          <View style={[styles.hostTag, { borderColor: `${borderColor}70` }]}>
+            <Text
+              numberOfLines={1}
+              style={[styles.hostText, { color: foregroundMutedColor }]}
+            >
+              {session.serverLabel}
+            </Text>
+          </View>
+        ) : null}
 
         {/* Project Tag */}
         <View style={[styles.projectTag, { borderColor: `${borderColor}70` }]}>
@@ -260,6 +274,17 @@ const styles = StyleSheet.create({
     shadowColor: "#F59E0B",
     shadowRadius: 6,
     shadowOpacity: 0.9,
+  },
+  hostTag: {
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+    borderWidth: 1,
+    backgroundColor: "rgba(128, 128, 128, 0.08)",
+  },
+  hostText: {
+    fontSize: 10.5,
+    fontWeight: "600",
   },
   projectTag: {
     paddingHorizontal: 7,

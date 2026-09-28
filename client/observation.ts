@@ -1,3 +1,6 @@
+import type { HostInfo } from "./hosts";
+import { resolveHostApi } from "./hosts";
+
 export interface DebouncedInvalidator {
   readonly invalidate: () => void;
   readonly cancel: () => void;
@@ -61,66 +64,77 @@ export function createDebouncedInvalidator(
 }
 
 interface ActiveSubscription {
+  readonly serverId: string;
   readonly kind: "agent" | "workspace";
   readonly unsubscribe: () => void;
   readonly release: () => Promise<void>;
 }
 
-export function observeDirectoryInvalidation(
-  paseo: PaseoApiLike,
+export function observeMultiHostInvalidation(
+  hosts: readonly HostInfo[],
+  ownHost: { id: string; api: PaseoApiLike },
   invalidate: () => void,
 ): () => void {
   const subscriptions = new Set<ActiveSubscription>();
+  const projectUnsubscribes = new Set<() => void>();
   let stopped = false;
 
-  const attachAgents = async () => {
-    try {
-      const result = await paseo.agents.list({ subscribe: {} });
-      const subscription = result.subscription;
-      if (!subscription) return;
-      if (stopped) {
-        await subscription.release().catch(() => {});
-        return;
+  for (const host of hosts) {
+    if (!host.isOnline && host.serverId !== ownHost.id) continue;
+    const api = resolveHostApi(host.serverId, ownHost as any) as unknown as PaseoApiLike | null;
+    if (!api) continue;
+
+    const serverId = host.serverId;
+
+    const attachAgents = async () => {
+      try {
+        const result = await api.agents.list({ subscribe: {} });
+        const subscription = result.subscription;
+        if (!subscription) return;
+        if (stopped) {
+          await subscription.release().catch(() => {});
+          return;
+        }
+        subscriptions.add({
+          serverId,
+          kind: "agent",
+          unsubscribe: subscription.subscribe({ snapshot: invalidate, update: invalidate }),
+          release: subscription.release.bind(subscription),
+        });
+      } catch (err) {
+        console.warn(`Session Hub: [${host.label}] agent observation setup failed`, err);
       }
-      subscriptions.add({
-        kind: "agent",
-        unsubscribe: subscription.subscribe({ snapshot: invalidate, update: invalidate }),
-        release: subscription.release.bind(subscription),
-      });
-    } catch (err) {
-      console.warn("Session Hub: agent observation setup failed", err);
-    }
-  };
+    };
 
-  const attachWorkspaces = async () => {
-    try {
-      const result = await paseo.workspaces.list({ subscribe: {} });
-      const subscription = result.subscription;
-      if (!subscription) return;
-      if (stopped) {
-        await subscription.release().catch(() => {});
-        return;
+    const attachWorkspaces = async () => {
+      try {
+        const result = await api.workspaces.list({ subscribe: {} });
+        const subscription = result.subscription;
+        if (!subscription) return;
+        if (stopped) {
+          await subscription.release().catch(() => {});
+          return;
+        }
+        subscriptions.add({
+          serverId,
+          kind: "workspace",
+          unsubscribe: subscription.subscribe({ snapshot: invalidate, update: invalidate }),
+          release: subscription.release.bind(subscription),
+        });
+      } catch (err) {
+        console.warn(`Session Hub: [${host.label}] workspace observation setup failed`, err);
       }
-      subscriptions.add({
-        kind: "workspace",
-        unsubscribe: subscription.subscribe({ snapshot: invalidate, update: invalidate }),
-        release: subscription.release.bind(subscription),
-      });
-    } catch (err) {
-      console.warn("Session Hub: workspace observation setup failed", err);
-    }
-  };
+    };
 
-  void attachAgents();
-  void attachWorkspaces();
+    void attachAgents();
+    void attachWorkspaces();
 
-  let unsubscribeProjects = () => {};
-  try {
-    if (typeof paseo.projects?.subscribe === "function") {
-      unsubscribeProjects = paseo.projects.subscribe(invalidate);
-    }
-  } catch (err) {
-    console.warn("Session Hub: project observation setup failed", err);
+    try {
+      if (typeof api.projects?.subscribe === "function") {
+        const unsub = api.projects.subscribe(invalidate);
+        projectUnsubscribes.add(unsub);
+      }
+    } catch {}
   }
 
   return () => {
@@ -132,6 +146,12 @@ export function observeDirectoryInvalidation(
       } catch {}
     }
     subscriptions.clear();
-    unsubscribeProjects();
+
+    for (const unsub of projectUnsubscribes) {
+      try {
+        unsub();
+      } catch {}
+    }
+    projectUnsubscribes.clear();
   };
 }

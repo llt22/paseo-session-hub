@@ -1,12 +1,16 @@
 import { Icon } from "@getpaseo/plugin/client/react-native";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import type { ViewMode } from "../shared/types";
+import type { HostInfo } from "./hosts";
 
 interface SearchBarProps {
   readonly query: string;
   readonly onChangeQuery: (text: string) => void;
   readonly viewMode: ViewMode;
   readonly onChangeViewMode: (mode: ViewMode) => void;
+  readonly hosts: readonly HostInfo[];
+  readonly selectedHostId: string;
+  readonly onChangeSelectedHostId: (hostId: string) => void;
   readonly onRefresh: () => void;
   readonly isFetching: boolean;
   readonly closedCount: number;
@@ -24,6 +28,9 @@ export function SearchBar({
   onChangeQuery,
   viewMode,
   onChangeViewMode,
+  hosts,
+  selectedHostId,
+  onChangeSelectedHostId,
   onRefresh,
   isFetching,
   closedCount,
@@ -35,6 +42,8 @@ export function SearchBar({
   surfaceColor = "#1F2937",
   accentColor = "#3B82F6",
 }: SearchBarProps) {
+  const hasMultipleHosts = hosts.length > 1;
+
   return (
     <View style={styles.container}>
       {/* 1. Search Input */}
@@ -67,7 +76,59 @@ export function SearchBar({
         ) : null}
       </View>
 
-      {/* 2. Right Toolbar: View Switcher & Action Buttons */}
+      {/* 2. Host Filter Selector (Visible only when multiple hosts exist) */}
+      {hasMultipleHosts ? (
+        <View style={[styles.switchGroup, { borderColor: `${borderColor}80` }]}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => onChangeSelectedHostId("all")}
+            style={[
+              styles.switchBtn,
+              selectedHostId === "all"
+                ? { backgroundColor: `${accentColor}2A` }
+                : undefined,
+            ]}
+          >
+            <Text
+              style={[
+                styles.switchText,
+                { color: selectedHostId === "all" ? "#FFFFFF" : foregroundMutedColor },
+                selectedHostId === "all" ? styles.switchTextActive : null,
+              ]}
+            >
+              全部设备
+            </Text>
+          </Pressable>
+
+          {hosts.map((h) => {
+            const isSelected = selectedHostId === h.serverId;
+            return (
+              <Pressable
+                key={h.serverId}
+                accessibilityRole="button"
+                onPress={() => onChangeSelectedHostId(h.serverId)}
+                style={[
+                  styles.switchBtn,
+                  isSelected ? { backgroundColor: `${accentColor}2A` } : undefined,
+                ]}
+              >
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    styles.switchText,
+                    { color: isSelected ? "#FFFFFF" : foregroundMutedColor },
+                    isSelected ? styles.switchTextActive : null,
+                  ]}
+                >
+                  {h.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+
+      {/* 3. Right Toolbar: View Switcher & Action Buttons */}
       <View style={styles.tools}>
         {/* View Mode Switcher */}
         <View style={[styles.switchGroup, { borderColor: `${borderColor}80` }]}>
@@ -180,7 +241,7 @@ const styles = StyleSheet.create({
   },
   inputWrapper: {
     flex: 1,
-    minWidth: 260,
+    minWidth: 240,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 11,
@@ -212,6 +273,7 @@ const styles = StyleSheet.create({
   switchBtn: {
     paddingHorizontal: 9,
     paddingVertical: 5.5,
+    maxWidth: 140,
   },
   switchText: {
     fontSize: 11.5,

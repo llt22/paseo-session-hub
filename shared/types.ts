@@ -13,6 +13,8 @@ export interface SessionDiff {
 
 export interface UnifiedSession {
   readonly id: string;
+  readonly serverId: string;
+  readonly serverLabel: string;
   readonly title: string;
   readonly workspaceId: string;
   readonly workspaceName: string;
@@ -33,6 +35,8 @@ export interface UnifiedSession {
 export interface ProjectGroup {
   readonly projectId: string;
   readonly projectName: string;
+  readonly serverId?: string;
+  readonly serverLabel?: string;
   readonly sessions: readonly UnifiedSession[];
   readonly runningCount: number;
   readonly attentionCount: number;

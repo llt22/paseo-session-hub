@@ -21,6 +21,9 @@ export function SessionHubView({ theme, layout, host, navigation }: PluginSurfac
     filteredSessions,
     projectGroups,
     stats,
+    hosts,
+    selectedHostId,
+    setSelectedHostId,
     isLoading,
     isFetching,
     error,
@@ -35,7 +38,7 @@ export function SessionHubView({ theme, layout, host, navigation }: PluginSurfac
     bulkArchiveClosed,
     isArchiving,
     renameSession,
-  } = useSessions(host.id);
+  } = useSessions(host);
 
   const [now, setNow] = useState(() => Date.now());
 
@@ -47,13 +50,13 @@ export function SessionHubView({ theme, layout, host, navigation }: PluginSurfac
     return () => clearInterval(timer);
   }, []);
 
-  const handleOpenSession = (agentId: string) => {
+  const handleOpenSession = (agentId: string, serverId: string) => {
     try {
       if (navigation && typeof navigation.openAgent === "function") {
-        navigation.openAgent({ agentId });
+        navigation.openAgent({ agentId, serverId });
       }
     } catch (err) {
-      console.error("Session Hub: failed to open agent", agentId, err);
+      console.error("Session Hub: failed to open agent", agentId, serverId, err);
     }
   };
 
@@ -65,6 +68,9 @@ export function SessionHubView({ theme, layout, host, navigation }: PluginSurfac
   const numColumns = isGrid ? (layout.compact ? 1 : 3) : 1;
   const listKey = isGrid ? (layout.compact ? "grid-1" : "grid-3") : "list-1";
 
+  const hasMultipleHosts = hosts.length > 1;
+  const showHostBadge = hasMultipleHosts && selectedHostId === "all";
+
   return (
     <View style={[styles.container, { backgroundColor: colors.surface0 }]}>
       {/* 1. Header Area: Search Bar & Filter Tabs */}
@@ -74,6 +80,9 @@ export function SessionHubView({ theme, layout, host, navigation }: PluginSurfac
           onChangeQuery={setSearchQuery}
           viewMode={viewMode}
           onChangeViewMode={setViewMode}
+          hosts={hosts}
+          selectedHostId={selectedHostId}
+          onChangeSelectedHostId={setSelectedHostId}
           onRefresh={refetch}
           isFetching={isFetching}
           closedCount={stats.closed}
@@ -128,7 +137,7 @@ export function SessionHubView({ theme, layout, host, navigation }: PluginSurfac
         <FlatList<UnifiedSession>
           key="flat-list"
           data={filteredSessions}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => `${item.serverId}:${item.id}`}
           contentContainerStyle={[
             styles.listContent,
             { paddingHorizontal: gutter, paddingBottom: 30 },
@@ -140,6 +149,7 @@ export function SessionHubView({ theme, layout, host, navigation }: PluginSurfac
               onOpenSession={handleOpenSession}
               onArchiveSession={archiveSession}
               onRenameSession={renameSession}
+              showHostBadge={showHostBadge}
               foregroundColor={colors.foreground}
               foregroundMutedColor={colors.foregroundMuted}
               borderColor={colors.border}
@@ -152,7 +162,7 @@ export function SessionHubView({ theme, layout, host, navigation }: PluginSurfac
         <FlatList<UnifiedSession>
           key={listKey}
           data={filteredSessions}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => `${item.serverId}:${item.id}`}
           numColumns={numColumns}
           columnWrapperStyle={numColumns > 1 ? styles.gridRow : undefined}
           contentContainerStyle={[
@@ -167,6 +177,7 @@ export function SessionHubView({ theme, layout, host, navigation }: PluginSurfac
                 onOpenSession={handleOpenSession}
                 onArchiveSession={archiveSession}
                 onRenameSession={renameSession}
+                showHostBadge={showHostBadge}
                 foregroundColor={colors.foreground}
                 foregroundMutedColor={colors.foregroundMuted}
                 borderColor={colors.border}
@@ -180,7 +191,7 @@ export function SessionHubView({ theme, layout, host, navigation }: PluginSurfac
         <FlatList<ProjectGroup>
           key="grouped-list"
           data={projectGroups}
-          keyExtractor={(item) => item.projectId}
+          keyExtractor={(item) => `${item.serverId ?? "all"}:${item.projectId}`}
           contentContainerStyle={[
             styles.listContent,
             { paddingHorizontal: gutter, paddingBottom: 30 },
@@ -192,6 +203,7 @@ export function SessionHubView({ theme, layout, host, navigation }: PluginSurfac
               onOpenSession={handleOpenSession}
               onArchiveSession={archiveSession}
               onRenameSession={renameSession}
+              showHostBadge={showHostBadge}
               foregroundColor={colors.foreground}
               foregroundMutedColor={colors.foregroundMuted}
               borderColor={colors.border}

@@ -7,9 +7,10 @@ import { SessionRow } from "./session-row";
 interface ProjectGroupCardProps {
   readonly group: ProjectGroup;
   readonly now: number;
-  readonly onOpenSession: (sessionId: string) => void;
-  readonly onArchiveSession?: (sessionId: string) => void;
-  readonly onRenameSession?: (workspaceId: string, newTitle: string) => void;
+  readonly onOpenSession: (sessionId: string, serverId: string) => void;
+  readonly onArchiveSession?: (sessionId: string, serverId: string) => void;
+  readonly onRenameSession?: (workspaceId: string, newTitle: string, serverId: string) => void;
+  readonly showHostBadge?: boolean;
   readonly foregroundColor?: string;
   readonly foregroundMutedColor?: string;
   readonly borderColor?: string;
@@ -23,6 +24,7 @@ export function ProjectGroupCard({
   onOpenSession,
   onArchiveSession,
   onRenameSession,
+  showHostBadge = false,
   foregroundColor = "#F3F4F6",
   foregroundMutedColor = "#9CA3AF",
   borderColor = "#374151",
@@ -64,7 +66,7 @@ export function ProjectGroupCard({
           },
         ]}
       >
-        {/* Left: SVG Arrow + SVG Folder + Project Name + Count */}
+        {/* Left: SVG Arrow + SVG Folder + Project Name + Host Tag + Count */}
         <View style={styles.headerLeft}>
           <Icon
             name={isExpanded ? "ChevronDown" : "ChevronRight"}
@@ -82,6 +84,15 @@ export function ProjectGroupCard({
           >
             {group.projectName}
           </Text>
+
+          {showHostBadge && group.serverLabel ? (
+            <View style={[styles.hostTag, { borderColor: `${borderColor}60` }]}>
+              <Text style={[styles.hostText, { color: foregroundMutedColor }]}>
+                {group.serverLabel}
+              </Text>
+            </View>
+          ) : null}
+
           <View style={styles.countBadge}>
             <Text style={[styles.countText, { color: foregroundMutedColor }]}>
               {group.sessions.length}
@@ -123,6 +134,7 @@ export function ProjectGroupCard({
               onOpenSession={onOpenSession}
               onArchiveSession={onArchiveSession}
               onRenameSession={onRenameSession}
+              showHostBadge={showHostBadge}
               foregroundColor={foregroundColor}
               foregroundMutedColor={foregroundMutedColor}
               borderColor={borderColor}
@@ -163,6 +175,17 @@ const styles = StyleSheet.create({
   },
   runningProjectText: {
     color: "#10B981",
+  },
+  hostTag: {
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+    borderWidth: 1,
+    backgroundColor: "rgba(128, 128, 128, 0.08)",
+  },
+  hostText: {
+    fontSize: 10,
+    fontWeight: "600",
   },
   countBadge: {
     paddingHorizontal: 6,
