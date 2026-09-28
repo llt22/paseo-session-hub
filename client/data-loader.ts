@@ -12,6 +12,26 @@ const PAGE_LIMIT = 200;
 const MAX_PAGES = 10;
 const PARENT_AGENT_ID_LABEL = "paseo.parent-agent-id";
 
+/**
+ * Status weight for smart triage sorting:
+ * 1. Running (🟢) is always top priority
+ * 2. Attention (🟠) comes second
+ * 3. Idle (⚪) active comes third
+ * 4. Closed (💤) historical sessions always sink to the bottom tier
+ */
+export const STATUS_WEIGHT: Record<SessionStatus, number> = {
+  running: 400,
+  attention: 300,
+  idle: 200,
+  closed: 100,
+};
+
+export function compareSessions(a: UnifiedSession, b: UnifiedSession): number {
+  const weightDiff = STATUS_WEIGHT[b.status] - STATUS_WEIGHT[a.status];
+  if (weightDiff !== 0) return weightDiff;
+  return b.updatedAt - a.updatedAt;
+}
+
 interface RawAgentSnapshot {
   id: string;
   workspaceId?: string | null;
@@ -148,8 +168,8 @@ export async function fetchAllSessions(paseo: PaseoApiLike): Promise<readonly Un
 
   const sessions = agentsRes.map((entry) => normalizeSession(entry, workspacesMap));
 
-  // Sort by updatedAt descending (Linear / Spotlight style)
-  return sessions.sort((a, b) => b.updatedAt - a.updatedAt);
+  // Smart triage sorting: Running > Attention > Idle > Closed, then by updatedAt
+  return sessions.sort(compareSessions);
 }
 
 export function computeHubStats(sessions: readonly UnifiedSession[]): HubStats {
@@ -216,6 +236,7 @@ export function groupSessionsByProject(
       sessions: UnifiedSession[];
       runningCount: number;
       attentionCount: number;
+      lastUpdatedAt: number;
     }
   >();
 
@@ -228,13 +249,33 @@ export function groupSessionsByProject(
         sessions: [],
         runningCount: 0,
         attentionCount: 0,
+        lastUpdatedAt: s.updatedAt,
       };
       groupsMap.set(s.projectId, group);
     }
     group.sessions.push(s);
     if (s.status === "running") group.runningCount += 1;
     if (s.status === "attention") group.attentionCount += 1;
+    if (s.updatedAt > group.lastUpdatedAt) {
+      group.lastUpdatedAt = s.updatedAt;
+    }
   }
 
-  return Array.from(groupsMap.values());
+  // Sort sessions inside each project by smart triage order
+  for (const group of groupsMap.values()) {
+    group.sessions.sort(compareSessions);
+  }
+
+  // Sort projects:
+  // 1. Projects with Running sessions first
+  // 2. Projects with Attention sessions second
+  // 3. Then by most recent session updatedAt
+  const sortedProjects = Array.from(groupsMap.values()).sort((a, b) => {
+    const aWeight = a.runningCount * 1000 + a.attentionCount * 500;
+    const bWeight = b.runningCount * 1000 + b.attentionCount * 500;
+    if (aWeight !== bWeight) return bWeight - aWeight;
+    return b.lastUpdatedAt - a.lastUpdatedAt;
+  });
+
+  return sortedProjects;
 }

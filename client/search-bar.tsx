@@ -68,8 +68,30 @@ export function SearchBar({
 
       {/* 2. Right Toolbar: View Switcher & Action Buttons */}
       <View style={styles.tools}>
-        {/* View Mode Switcher: 3 Modes */}
+        {/* View Mode Switcher: Project First */}
         <View style={[styles.switchGroup, { borderColor: `${borderColor}80` }]}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="项目优先视图"
+            onPress={() => onChangeViewMode("grouped")}
+            style={[
+              styles.switchBtn,
+              viewMode === "grouped"
+                ? { backgroundColor: `${accentColor}2A` }
+                : undefined,
+            ]}
+          >
+            <Text
+              style={[
+                styles.switchText,
+                { color: viewMode === "grouped" ? "#FFFFFF" : foregroundMutedColor },
+                viewMode === "grouped" ? styles.switchTextActive : null,
+              ]}
+            >
+              按项目
+            </Text>
+          </Pressable>
+
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="时间线列表模式"
@@ -111,28 +133,6 @@ export function SearchBar({
               ]}
             >
               卡片
-            </Text>
-          </Pressable>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="项目分组模式"
-            onPress={() => onChangeViewMode("grouped")}
-            style={[
-              styles.switchBtn,
-              viewMode === "grouped"
-                ? { backgroundColor: `${accentColor}2A` }
-                : undefined,
-            ]}
-          >
-            <Text
-              style={[
-                styles.switchText,
-                { color: viewMode === "grouped" ? "#FFFFFF" : foregroundMutedColor },
-                viewMode === "grouped" ? styles.switchTextActive : null,
-              ]}
-            >
-              按项目
             </Text>
           </Pressable>
         </View>

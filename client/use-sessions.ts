@@ -46,7 +46,8 @@ export function useSessions(hostId: string): UseSessionsState {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
-  const [viewMode, setViewMode] = useState<ViewMode>("flat");
+  // Default to Project-First ("grouped") for optimal clarity
+  const [viewMode, setViewMode] = useState<ViewMode>("grouped");
 
   const {
     data: sessions = [],
